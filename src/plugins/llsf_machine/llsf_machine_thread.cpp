@@ -23,7 +23,6 @@
 #include <llsf_sps/sps_comm.h>
 #include <core/threading/mutex_locker.h>
 #include <boost/thread/thread.hpp>
-#include <boost/chrono.hpp>
 
 using namespace llsf_utils;
 using namespace llsf_sps;
@@ -116,8 +115,7 @@ LLSFMachineThread::loop()
 {
   sps_read_rfids();
 
-  boost::chrono::milliseconds duration(cfg_timer_interval_);
-  boost::this_thread::sleep_for(duration);
+  boost::this_thread::sleep(boost::posix_time::milliseconds(cfg_timer_interval_));
 }
 
 
