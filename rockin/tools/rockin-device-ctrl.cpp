@@ -41,6 +41,7 @@
 
 #include <msgs/DrillingMachine.pb.h>
 #include <msgs/ConveyorBelt.pb.h>
+#include <msgs/ForceFittingMachine.pb.h>
 
 using namespace protobuf_comm;
 using namespace rockin_msgs;
@@ -49,6 +50,7 @@ using namespace fawkes;
 ProtobufStreamClient *client_ = 0;
 DrillingMachineStatus drilling_machine_status;
 ConveyorBeltStatus conveyor_belt_status;
+ForceFittingMachineStatus force_fitting_machine_status;
 
 
 
@@ -63,6 +65,11 @@ void handle_message(uint16_t comp_id, uint16_t msg_type,
   std::shared_ptr<ConveyorBeltStatus> cs;
   if ((cs = std::dynamic_pointer_cast<ConveyorBeltStatus>(msg))) {
     conveyor_belt_status = *cs;
+  }
+
+  std::shared_ptr<ForceFittingMachineStatus> fs;
+  if ((fs = std::dynamic_pointer_cast<ForceFittingMachineStatus>(msg))) {
+    force_fitting_machine_status = *fs;
   }
 }
 
@@ -122,6 +129,35 @@ bool control_conveyor_belt(const std::string &command)
   return false;
 }
 
+bool control_force_fitting_machine(const std::string &command)
+{
+  if (!force_fitting_machine_status.has_state()) return false;
+
+  ForceFittingMachineStatus::State state = force_fitting_machine_status.state();
+  ForceFittingMachineCommand msg;
+
+  if (command == "down") {
+    if (state == ForceFittingMachineStatus::AT_BOTTOM) return true;
+    if (state == ForceFittingMachineStatus::MOVING_DOWN) return false;
+    if (state == ForceFittingMachineStatus::UNKNOWN) return false;
+
+    msg.set_command(ForceFittingMachineCommand::MOVE_DOWN);
+  } else if (command == "up") {
+    if (state == ForceFittingMachineStatus::AT_TOP) return true;
+    if (state == ForceFittingMachineStatus::MOVING_UP) return false;
+    if (state == ForceFittingMachineStatus::UNKNOWN) return false;
+
+    msg.set_command(ForceFittingMachineCommand::MOVE_UP);
+  } else {
+    std::cerr << "Command '" << command << "' is invalid for the force fitting machine." << std::endl;
+    return true;
+  }
+
+  client_->send(msg);
+
+  return false;
+}
+
 
 int main(int argc, char **argv)
 {
@@ -145,6 +181,8 @@ int main(int argc, char **argv)
   message_register.add_message_type<DrillingMachineCommand>();
   message_register.add_message_type<ConveyorBeltStatus>();
   message_register.add_message_type<ConveyorBeltCommand>();
+  message_register.add_message_type<ForceFittingMachineStatus>();
+  message_register.add_message_type<ForceFittingMachineCommand>();
 
   client_->signal_received().connect(handle_message);
   client_->async_connect(
@@ -157,6 +195,8 @@ int main(int argc, char **argv)
       quit = control_drilling_machine(command);
     } else if (device == "conveyor_belt") {
       quit = control_conveyor_belt(command);
+    } else if (device == "force_fitting_machine") {
+        quit = control_force_fitting_machine(command);
     } else {
       std::cerr << "Device '" << device << "' is invalid." << std::endl;
       quit = true;
