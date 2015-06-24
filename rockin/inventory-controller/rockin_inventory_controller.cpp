@@ -10,6 +10,7 @@
 #include <protobuf_comm/client.h>
 #include <msgs/BenchmarkState.pb.h>
 #include <msgs/BenchmarkFeedback.pb.h>
+#include <msgs/Inventory.pb.h>
 
 #include <gtkmm.h>
 #include <pangomm.h>
@@ -22,7 +23,9 @@ Glib::RefPtr<Gtk::Builder> builder;
 std::chrono::time_point<std::chrono::system_clock> last_gui_update;
 boost::mutex mutex;
 std::shared_ptr<rockin_msgs::BenchmarkState> benchmark_state;
-
+std::shared_ptr<rockin_msgs::Inventory> inventory;
+std::shared_ptr<rockin_msgs::Inventory> inventory_old;
+std::shared_ptr<rockin_msgs::Inventory> inventory_preview;
 
 
 void handle_message(uint16_t comp_id, uint16_t msg_type,
@@ -34,8 +37,11 @@ void handle_message(uint16_t comp_id, uint16_t msg_type,
   if (std::dynamic_pointer_cast<rockin_msgs::BenchmarkState>(msg)) {
     benchmark_state = std::dynamic_pointer_cast<rockin_msgs::BenchmarkState>(msg);
   }
-}
 
+  if (std::dynamic_pointer_cast<rockin_msgs::Inventory>(msg)) {
+    inventory = std::dynamic_pointer_cast<rockin_msgs::Inventory>(msg);
+  }
+}
 
 
 bool idle_handler() {
@@ -46,7 +52,7 @@ bool idle_handler() {
   last_gui_update = std::chrono::system_clock::now();
 
 
-  // Prevent simultaneous access to the refbox state from gui and network
+  // Prevent simultaneous access to the cfh state from gui and network
   boost::mutex::scoped_lock lock(mutex);
 
   if (benchmark_state) {
@@ -58,7 +64,7 @@ bool idle_handler() {
     builder->get_widget("button_add_item_to_inventory", button_add_item_to_inventory);
     builder->get_widget("button_remove_item_from_inventory", button_remove_item_from_inventory);
     builder->get_widget("button_preview_inventory", button_preview_inventory);
-    builder->get_widget("button_button_update_inventory", button_update_inventory);
+    builder->get_widget("button_update_inventory", button_update_inventory);
     builder->get_widget("button_discard_changes_to_inventory", button_discard_changes_to_inventory);
 
     switch (benchmark_state->state()) {
@@ -137,7 +143,7 @@ void on_remove_item_from_inventory_click()
 }
 
 
-void on_preview_window_click()
+void on_preview_inventory_click()
 {
   if (!client.connected()) return;
 
@@ -165,13 +171,13 @@ void on_discard_changes_to_inventory_click()
 //  client.send(msg);
 }
 
-void on_choose_item_changed()
+void on_choose_item_arena_inventory_changed()
 {
   if (!client.connected()) return;
 
-  Gtk::ComboBoxText *comboBoxText_choose_item = 0;
-  builder->get_widget("comboBoxText_choose_item", comboBoxText_choose_item);
-  std::string phase = comboBoxText_choose_item->get_active_text();
+  Gtk::ComboBoxText *comboBoxText_choose_item_arena_inventory = 0;
+  builder->get_widget("comboBoxText_choose_item_arena_inventory", comboBoxText_choose_item_arena_inventory);
+  std::string phase = comboBoxText_choose_item_arena_inventory->get_active_text();
 
   rockin_msgs::SetBenchmarkPhase cmd_phase;
 //  if (phase == "FBM1") {
@@ -201,6 +207,115 @@ void on_choose_item_changed()
   client.send(cmd_event);
 }
 
+void on_choose_item_complete_inventory_changed()
+{
+  if (!client.connected()) return;
+
+  Gtk::ComboBoxText *comboBoxText_choose_item_complete_inventory = 0;
+  builder->get_widget("comboBoxText_choose_item_complete_inventory", comboBoxText_choose_item_complete_inventory);
+  std::string phase = comboBoxText_choose_item_complete_inventory->get_active_text();
+
+  rockin_msgs::SetBenchmarkPhase cmd_phase;
+//  if (phase == "FBM1") {
+//    cmd_phase.mutable_phase()->set_type(rockin_msgs::BenchmarkPhase::FBM);
+//    cmd_phase.mutable_phase()->set_type_id(1);
+//  } else if (phase == "FBM2") {
+//    cmd_phase.mutable_phase()->set_type(rockin_msgs::BenchmarkPhase::FBM);
+//    cmd_phase.mutable_phase()->set_type_id(2);
+//  } else if (phase == "TBM1") {
+//    cmd_phase.mutable_phase()->set_type(rockin_msgs::BenchmarkPhase::TBM);
+//    cmd_phase.mutable_phase()->set_type_id(1);
+//  } else if (phase == "TBM2") {
+//    cmd_phase.mutable_phase()->set_type(rockin_msgs::BenchmarkPhase::TBM);
+//    cmd_phase.mutable_phase()->set_type_id(2);
+//  } else if (phase == "TBM3") {
+//    cmd_phase.mutable_phase()->set_type(rockin_msgs::BenchmarkPhase::TBM);
+//    cmd_phase.mutable_phase()->set_type_id(3);
+//  } else if (phase == "None") {
+//    cmd_phase.mutable_phase()->set_type(rockin_msgs::BenchmarkPhase::NONE);
+//    cmd_phase.mutable_phase()->set_type_id(0);
+//  }
+  client.send(cmd_phase);
+
+
+  rockin_msgs::SetBenchmarkTransitionEvent cmd_event;
+  cmd_event.set_event(rockin_msgs::SetBenchmarkTransitionEvent::RESET);
+  client.send(cmd_event);
+}
+
+void initialize_complete_inventory_comboBox()
+{
+	//if (!client.connected()) return;
+
+	  Gtk::ComboBoxText *comboBoxText_choose_item_complete_inventory = 0;
+	  builder->get_widget("comboBoxText_choose_item_complete_inventory", comboBoxText_choose_item_complete_inventory);
+
+	  // Add AX-Parts
+	  comboBoxText_choose_item_complete_inventory->append("AX-01 - Bearing Box Type A");
+	  comboBoxText_choose_item_complete_inventory->append("AX-02 - Bearing");
+	  comboBoxText_choose_item_complete_inventory->append("AX-03 - Axis");
+	  comboBoxText_choose_item_complete_inventory->append("AX-04 - Shaft Nut");
+	  comboBoxText_choose_item_complete_inventory->append("AX-05 - Distance Tube");
+	  comboBoxText_choose_item_complete_inventory->append("AX-06 - Cover Plate");
+	  comboBoxText_choose_item_complete_inventory->append("AX-07 - Cover Plate Machined");
+	  comboBoxText_choose_item_complete_inventory->append("AX-08 - Pre Assembled Bearing Box");
+	  comboBoxText_choose_item_complete_inventory->append("AX-09 - Motor with Gearbox and Encoder");
+	  comboBoxText_choose_item_complete_inventory->append("AX-10 - Screw Pack 1 (mounting cover plate to bearing box)");
+	  comboBoxText_choose_item_complete_inventory->append("AX-11 - Screw Pack 2 (mounting cover plate to motor");
+	  //comboBoxText_choose_item_complete_inventory->append("AX-12");
+	  //comboBoxText_choose_item_complete_inventory->append("AX-13");
+	  //comboBoxText_choose_item_complete_inventory->append("AX-14");
+	  //comboBoxText_choose_item_complete_inventory->append("AX-15");
+	  comboBoxText_choose_item_complete_inventory->append("AX-16 - Bearing Box Type B");
+
+	  // Add EM-parts
+	  comboBoxText_choose_item_complete_inventory->append("EM-01 - Aid Tray");
+	  comboBoxText_choose_item_complete_inventory->append("EM-02 - File Card Box");
+	  comboBoxText_choose_item_complete_inventory->append("EM-03 - Box for Fill a Box");
+	  //comboBoxText_choose_item_complete_inventory->append("EM-04");
+	  //comboBoxText_choose_item_complete_inventory->append("EM-05");
+	  comboBoxText_choose_item_complete_inventory->append("EM-06 - Cone Sink Driller");
+
+	  // Add ER-parts
+	  comboBoxText_choose_item_complete_inventory->append("ER-01 - Foam Container");
+	  comboBoxText_choose_item_complete_inventory->append("ER-02 - Common Shelf Container");
+	  comboBoxText_choose_item_complete_inventory->append("ER-03 - Aid Tray Rack");
+}
+
+void initialize_arena_inventory_comboBox()
+{
+	if (!client.connected()) return;
+
+//	if (inventory) {
+//	    Gtk::Label *label_inventory = 0;
+//	    builder->get_widget("label_inventory", label_inventory);
+//
+//	    std::stringstream sstr;
+//	    for (int i = 0; i < inventory->items_size(); i++) {
+//	      const rockin_msgs::Inventory::Item &item = inventory->items(i);
+//	      sstr << item.object().description() << ": ";
+//
+//	      if (inventory->items(i).has_container()) sstr << item.container().description();
+//	      else if (inventory->items(i).has_location()) sstr << item.location().description();
+//
+//	      sstr << std::endl;
+//	    }
+//	    label_inventory->set_text(sstr.str());
+
+	if (inventory)
+	{
+	    std::cout << "Inventory received:" << std::endl;
+
+	    for (int i = 0; i < inventory->items_size(); i++) {
+	    const rockin_msgs::Inventory_Item &item = inventory->items(i);
+	      std::cout << "  Object " << i << ": " << item.object().description() << std::endl;
+	      if (item.has_location()) std::cout << "    In location: " << item.location().description() << std::endl;
+	      if (item.has_container()) std::cout << "    In container: " << item.container().description() << std::endl;
+	      if (item.has_quantity()) std::cout << "    Quantity: " << item.quantity() << std::endl;
+	    }
+	}
+}
+
 int main(int argc, char **argv)
 {
   llsfrb::YamlConfiguration config(CONFDIR);
@@ -208,9 +323,10 @@ int main(int argc, char **argv)
 
   protobuf_comm::MessageRegister &message_register = client.message_register();
   message_register.add_message_type<rockin_msgs::BenchmarkState>();
+  message_register.add_message_type<rockin_msgs::Inventory>();
 
 
-  Glib::RefPtr<Gtk::Application> app = Gtk::Application::create(argc, argv, "org.rockin.controller");
+  Glib::RefPtr<Gtk::Application> app = Gtk::Application::create(argc, argv, "org.rockin.inventory-controller");
   builder = Gtk::Builder::create_from_file(std::string(SRCDIR) + std::string("/rockin_inventory_controller.glade"));
 
   Gtk::Window *window = 0;
@@ -223,14 +339,16 @@ int main(int argc, char **argv)
   Gtk::Button *button_preview_inventory = 0;
   Gtk::Button *button_update_inventory = 0;
   Gtk::Button *button_discard_changes_to_inventory = 0;
-  Gtk::ComboBoxText *choose_item = 0;
+  Gtk::ComboBoxText *comboBoxText_choose_item_arena_inventory = 0;
+  Gtk::ComboBoxText *comboBoxText_choose_item_complete_inventory = 0;
 
-  builder->get_widget("button_add_item_to_inventory", button_add_item_to_inventory;
+  builder->get_widget("button_add_item_to_inventory", button_add_item_to_inventory);
   builder->get_widget("button_remove_item_from_inventory", button_remove_item_from_inventory);
   builder->get_widget("button_preview_inventory", button_preview_inventory);
   builder->get_widget("button_update_inventory", button_update_inventory);
   builder->get_widget("button_discard_changes_to_inventory", button_discard_changes_to_inventory);
-  builder->get_widget("comboBoxText_choose_item", comboBoxText_choose_item);
+  builder->get_widget("comboBoxText_choose_item_arena_inventory", comboBoxText_choose_item_arena_inventory);
+  builder->get_widget("comboBoxText_choose_item_complete_inventory", comboBoxText_choose_item_complete_inventory);
 
   Glib::signal_idle().connect(sigc::ptr_fun(&idle_handler));
   button_add_item_to_inventory->signal_clicked().connect(sigc::ptr_fun(&on_add_item_to_inventory_click));
@@ -238,12 +356,15 @@ int main(int argc, char **argv)
   button_preview_inventory->signal_clicked().connect(sigc::ptr_fun(&on_preview_inventory_click));
   button_update_inventory->signal_clicked().connect(sigc::ptr_fun(&on_update_inventory_click));
   button_discard_changes_to_inventory->signal_clicked().connect(sigc::ptr_fun(&on_discard_changes_to_inventory_click));
-  comboBoxText_choose_item->signal_changed().connect(sigc::ptr_fun(&on_choose_item_changed));
+  comboBoxText_choose_item_arena_inventory->signal_changed().connect(sigc::ptr_fun(&on_choose_item_arena_inventory_changed));
+  comboBoxText_choose_item_complete_inventory->signal_changed().connect(sigc::ptr_fun(&on_choose_item_complete_inventory_changed));
+
+  initialize_complete_inventory_comboBox();
 
   client.signal_received().connect(handle_message);
   client.signal_disconnected().connect(handle_disconnect);
-  host = config.get_string("/llsfrb/shell/cfh-host");
-  port = config.get_uint("/llsfrb/shell/cfh-port");
+  host = config.get_string("/llsfrb/shell/refbox-host");
+  port = config.get_uint("/llsfrb/shell/refbox-port");
   client.async_connect(host.c_str(), port);
 
   return app->run(*window);
