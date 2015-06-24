@@ -21,11 +21,11 @@ REQ_BOOST_LIBS = thread asio system signals2
 HAVE_BOOST_LIBS = $(call boost-have-libs,$(REQ_BOOST_LIBS))
 
 LIBS_rockin_inventory_controller = stdc++ llsfrbcore llsfrbutils llsfrbconfig llsf_protobuf_comm rockin_msgs
-OBJS_rockin__inventory_controller = rockin-inventory-controller.o
+OBJS_rockin_inventory_controller = rockin_inventory_controller.o
 
 ifeq ($(HAVE_PROTOBUF)$(HAVE_BOOST_LIBS)$(HAVE_GTKMM),111)
   OBJS_all += $(OBJS_rockin_inventory_controller)
-  BINS_all += $(BINDIR)/rockin-inventory-controller
+  BINS_all += $(BINDIR)/rockin_inventory_controller
 
   CFLAGS += $(CFLAGS_PROTOBUF) $(CFLAGS_GTKMM) \
             $(call boost-libs-cflags,$(REQ_BOOST_LIBS))
