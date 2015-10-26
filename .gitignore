@@ -37,6 +37,10 @@
 # Protobuf generated files
 *.pb.h
 *.pb.cpp
+*_pb2.py
 
 # Log files
 *.log
+
+# Python bytecode
+*.pyc

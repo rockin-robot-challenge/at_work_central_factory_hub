@@ -46,7 +46,7 @@ ifneq ($(PROTOBUF_all),)
 	$(eval PROTOBUF_HDRS             += $(SRCDIR)/$P.pb.h)			\
 	$(eval PROTOBUF_LIBS             += $(PROTOBUF_LIBDIR)/lib$P.$(SOEXT))	\
 	$(eval LIBS_all                  += $(PROTOBUF_LIBDIR)/lib$P.$(SOEXT))	\
-	$(eval CLEAN_FILES               += $P.pb.h $P.pb.cpp)			\
+	$(eval CLEAN_FILES               += $P.pb.h $P.pb.cpp $P_pb2.py)	\
 	, \
 	$(eval LDFLAGS_protobuf_lib$P     = $(LDFLAGS_PROTOBUF))		\
 	$(eval OBJS_protobuf_lib$P        = $(MSGS_$P:%=%.pb.o))		\
@@ -60,9 +60,11 @@ ifneq ($(PROTOBUF_all),)
 	$(eval OBJS_lib$P.$(SOEXT)	  = $(MSGS_$P:%=%.pb.o))		\
 	$(eval LIBS_all                  += $(PROTOBUF_LIBDIR)/lib$P.$(SOEXT))	\
 	$(eval CLEAN_FILES               += $(MSGS_$P:%=%.pb.h) 		\
-					    $(MSGS_$P:%=%.pb.cpp))		\
+					    $(MSGS_$P:%=%.pb.cpp)		\
+					    $(MSGS_$P:%=%_pb2.py))		\
 	)\
   )
+  $(eval CLEAN_FILES += $(SRCDIR)/__init__.py)
 endif
 
 ifeq ($(OBJSSUBMAKE),1)
@@ -73,8 +75,10 @@ $(PROTOBUF_HDRS): $(SRCDIR)/%.pb.h: $(SRCDIR)/$(OBJDIR)/%.pb.touch
 $(SRCDIR)/$(OBJDIR)/%.pb.touch: $(SRCDIR)/%.proto
 	$(SILENTSYMB) echo "$(INDENT_PRINT)--> Generating $* (Protobuf Message)"
 	$(SILENT)$(PROTOBUF_PROTOC) --cpp_out $(SRCDIR) --proto_path $(SRCDIR) $<
+	$(SILENT)$(PROTOBUF_PROTOC) --python_out $(SRCDIR) --proto_path $(SRCDIR) $<
 	$(SILENT) mv $(SRCDIR)/$*.pb.cc $(SRCDIR)/$*.pb.cpp
 	$(SILENT) mkdir -p $(@D)
+	$(SILENT) touch $(SRCDIR)/__init__.py
 	$(SILENT) touch $@
 
 .SECONDARY: $(PROTOBUF_SRCS) $(PROTOBUF_HDRS)
